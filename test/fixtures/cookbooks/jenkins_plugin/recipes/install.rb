@@ -1,3 +1,5 @@
+node.default['jenkins']['master']['jvm_options'] = '-Djenkins.install.runSetupWizard=false'
+
 include_recipe 'jenkins_server_wrapper::default'
 
 # Test basic plugin installation
@@ -13,7 +15,13 @@ jenkins_plugin 'copy-to-slave' do
   source 'http://mirror.xmission.com/jenkins/plugins/copy-to-slave/1.4.3/copy-to-slave.hpi'
 end
 
-# Install a plugin with many deps
+# Install a plugin with many deps 
+# depends on github-api 1.67 https://github.com/jenkinsci/github-oauth-plugin/blob/e804d0b7d454b066ba016561fe7a1ca3804771dd/pom.xml#L82
+jenkins_plugin 'github-oauth' do
+  version '0.21.1'
+  install_deps true
+  notifies :restart, 'service[jenkins]', :immediately
+end
 jenkins_plugin 'github-oauth' do
   install_deps true
 end
