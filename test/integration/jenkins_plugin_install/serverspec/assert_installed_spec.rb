@@ -16,13 +16,13 @@ end
 
 describe jenkins_plugin('github-oauth') do
   it { should be_a_jenkins_plugin }
-  it { should have_version('0.21.1') }
+  it { should have_version('0.24') }
 end
 
 # Ensure one of github-oauth's deps was installed and updated
 describe jenkins_plugin('github-api') do
   it { should be_a_jenkins_plugin }
-  it { should have_version('1.67') }
+  it { should have_version('1.69') }
 end
 
 # Ensure a transitive dep has been installed

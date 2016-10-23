@@ -22,7 +22,11 @@ jenkins_plugin 'github-oauth' do
   install_deps true
   notifies :restart, 'service[jenkins]', :immediately
 end
+
+# Install a plugin with many deps 
+# with an updated  dependency of github-api to 1.69 https://github.com/jenkinsci/github-oauth-plugin/blob/19de18532786d5a1ae6f033680fa0ee872641fef/pom.xml#L82
 jenkins_plugin 'github-oauth' do
+  version '0.24'
   install_deps true
 end
 
