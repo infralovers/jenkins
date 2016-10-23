@@ -42,3 +42,12 @@ describe jenkins_plugin('build-monitor-plugin') do
   it { should be_a_jenkins_plugin }
   it { should have_version('1.6+build.135') }
 end
+
+# Ensure nested plugins get updated.
+
+describe jenkins_plugin('build-monitor-plugin') do
+  it { should be_a_jenkins_plugin }
+  it { should have_version('1.6+build.135') }
+end
+
+
