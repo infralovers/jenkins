@@ -10,7 +10,8 @@ provisioner:
   name: dokken
 
 verifier:
-  name: inspec
+  name: busser
+  root_path: '/opt/verifier'  
 
 platforms:
 - name: debian-7
