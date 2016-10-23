@@ -106,9 +106,11 @@ EOH
     end
 
     action :install do
+
       # This block stores the actual command to execute, since its the same
       # for upgrades and installs.
       install_block = proc do
+
         # Install a plugin from a given hpi (or jpi) if a link was provided.
         # In that case jenkins does not handle plugin dependencies automatically.
         # Otherwise the plugin is installed through the jenkins update-center
@@ -266,27 +268,35 @@ EOH
       # comparisons.
       latest_version = plugin_version(remote_plugin_data['version'])
 
+      # Replace the latest version with the desired version in the URL
+      source_url = remote_plugin_data['url']
+      source_url.gsub!(latest_version.to_s, desired_version(plugin_name, plugin_version).to_s)
+
+      plugin_installation_manifest = install_plugin_from_url(source_url, plugin_name, desired_version(plugin_name, plugin_version), opts)
+      plugin_installation_manifest_dependencies = []
+      if plugin_installation_manifest['plugin_dependencies']
+        plugin_installation_manifest_dependencies = plugin_installation_manifest['plugin_dependencies'].split(',').map{ |plugin| data = plugin.split(':');{ 'name' => data.first, 'version' => data.last }}
+      end
+      Chef::Log.warn "manifest #{plugin_installation_manifest}"
+
       # Brute-force install all dependencies
-      if opts[:install_deps] && remote_plugin_data['dependencies'].any?
-        Chef::Log.debug "Installing plugin dependencies for #{plugin_name}"
+      if opts[:install_deps] && plugin_installation_manifest_dependencies.any?
+        Chef::Log.warn "Installing plugin dependencies for #{plugin_name}"
 
         remote_plugin_data['dependencies'].each do |dep|
           # continue if any version of the dependency is installed
           if plugin_installation_manifest(dep['name'])
-            Chef::Log.debug "A version of dependency #{dep['name']} is already installed - skipping"
+            Chef::Log.warn "A version of dependency #{dep['name']} is already installed - skipping"
             next
           elsif dep['optional'] == false
             # only install required dependencies
+            Chef::Log.warn "Install dep for #{plugin_name}: #{dep['name']}:#{dep['version']}"
+
             install_plugin_from_update_center(dep['name'], dep['version'], opts)
           end
         end
       end
 
-      # Replace the latest version with the desired version in the URL
-      source_url = remote_plugin_data['url']
-      source_url.gsub!(latest_version.to_s, desired_version(plugin_name, plugin_version).to_s)
-
-      install_plugin_from_url(source_url, plugin_name, desired_version(plugin_name, plugin_version), opts)
     end
 
     #
@@ -310,11 +320,19 @@ EOH
       plugin.backup(false)
       plugin.run_action(:create)
 
+      manifest = Chef::Resource::Ark.new("#{plugin_name}-#{version}.plugin-manifest", run_context)
+      manifest.url = "file://#{path}"
+      manifest.creates = 'MANIFEST.MF'
+      manifest.path = "#{path}-manifest"
+      manifest.extension 'zip'
+      manifest.run_action(:cherry_pick)
+
       # Install the plugin from our local cache on disk. There is a bug in
       # Jenkins that prevents Jenkins from following 302 redirects, so we
       # use Chef to download the plugin and then use Jenkins to install it.
       # It's a bit backwards, but so is Jenkins.
       executor.execute!('install-plugin', escape(plugin.path), '-name', escape(plugin_name), opts[:cli_opts])
+      plugin_installation_manifest_load_from_path(::File.join(manifest.path,manifest.creates))
     end
 
     #
@@ -382,6 +400,10 @@ EOH
     def plugin_installation_manifest(plugin_name)
       manifest = ::File.join(plugins_directory, plugin_name, 'META-INF', 'MANIFEST.MF')
       Chef::Log.debug "Load #{plugin_name} plugin information from #{manifest}"
+      plugin_installation_manifest_load_from_path(manifest)
+    end
+
+    def plugin_installation_manifest_load_from_path(manifest)
 
       return nil unless ::File.exist?(manifest)
 
@@ -405,6 +427,7 @@ EOH
 
       plugin_manifest
     end
+
 
     #
     # Return whether plugin should be upgraded to desired version

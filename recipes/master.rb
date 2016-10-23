@@ -26,6 +26,8 @@
 # limitations under the License.
 #
 
+include_recipe 'ark'
+
 # Gracefully handle the failure for an invalid installation type
 begin
   include_recipe "jenkins::_master_#{node['jenkins']['master']['install_method']}"
